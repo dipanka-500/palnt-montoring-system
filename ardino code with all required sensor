@@ -1,0 +1,80 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+
+// I2C address of the LCD (usually 0x27 or 0x3F)
+#define LCD_ADDRESS 0x27
+#define LCD_COLUMNS 16
+#define LCD_ROWS 2
+
+LiquidCrystal_I2C lcd(LCD_ADDRESS, LCD_COLUMNS, LCD_ROWS);
+
+#define DHTPIN 2      // Pin which is connected to the DHT sensor
+#define DHTTYPE DHT11 // DHT 11
+
+#define MOISTURE_PIN A0  // Pin connected to the soil moisture sensor
+#define LED_PIN 3        // Pin connected to the LED
+#define PUMP_PIN 4       // Pin connected to the relay module for the water pump
+
+DHT dht(DHTPIN, DHTTYPE); // Correct declaration of the DHT object
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin(); // Initialize the DHT sensor
+  lcd.begin(LCD_COLUMNS, LCD_ROWS);
+  lcd.backlight();
+  
+  pinMode(LED_PIN, OUTPUT);
+  pinMode(PUMP_PIN, OUTPUT);
+  digitalWrite(PUMP_PIN, LOW); // Ensure the pump is off at startup
+
+  lcd.setCursor(0, 0);
+  lcd.print("Soil Moisture:");
+  lcd.setCursor(0, 1);
+  lcd.print("Temp:");
+}
+
+void loop() {
+  // Read soil moisture
+  int soilMoistureValue = analogRead(MOISTURE_PIN);
+
+  // Read temperature
+  float temp = dht.readTemperature();
+
+  // Check if any reads failed and exit early (to try again).
+  if (isnan(temp)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  // Print the values to the Serial Monitor
+  Serial.print("Soil Moisture: ");
+  Serial.println(soilMoistureValue);
+  Serial.print("Temperature: ");
+  Serial.println(temp);
+
+  // Display the values on the LCD
+  lcd.setCursor(14, 0);
+  lcd.print(soilMoistureValue);
+
+  lcd.setCursor(6, 1);
+  lcd.print(temp);
+  lcd.print(" C");
+
+  // LED indication based on temperature (example logic)
+  if (temp > 30) {
+    digitalWrite(LED_PIN, HIGH); // Turn on LED if temperature is above 30 degrees Celsius
+  } else {
+    digitalWrite(LED_PIN, LOW);  // Turn off LED otherwise
+  }
+
+  // Control the water pump based on soil moisture
+  if (soilMoistureValue < 300) {
+    digitalWrite(PUMP_PIN, HIGH); // Turn on the pump if soil moisture is below 300 (dry soil)
+  } else {
+    digitalWrite(PUMP_PIN, LOW);  // Turn off the pump otherwise
+  }
+
+  // Delay before the next reading
+  delay(2000);
+}
